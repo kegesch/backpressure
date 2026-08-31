@@ -1,0 +1,14 @@
+rules:
+  - id: engine-no-console-log
+    languages: [typescript]
+    severity: ERROR
+    message: console.log left in engine code — debug output should not ship
+    paths:
+      include: ["engine/**"]
+      exclude: ["**/*.test.ts"]
+    pattern: 'console.log(...)'
+    metadata:
+      backpressure:
+        mode: advise
+        why: Debug logging in the engine reduces signal; return errors explicitly instead.
+        instead: Remove the console.log call or return a diagnostic value.

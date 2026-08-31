@@ -1,0 +1,14 @@
+rules:
+  - id: engine-max-cyclomatic
+    language: typescript
+    maxCyclomatic: 10
+    severity: ERROR
+    paths:
+      include: ["engine/**"]
+      exclude: ["**/*.test.ts"]
+    metadata:
+      backpressure:
+        status: draft
+        why: Functions with many decision branches are hard to review and test.
+        instead: Extract decision branches into focused helper functions.
+        appealable: true

@@ -1,0 +1,46 @@
+rules:
+  - id: engine-no-harness-imports
+    languages: [typescript]
+    severity: ERROR
+    message: engine module imports a harness SDK or third-party package
+    paths:
+      include: ["engine/**"]
+      exclude: ["**/*.test.ts"]
+    patterns:
+      - pattern: 'import "$MOD"'
+      - metavariable-regex:
+          metavariable: $MOD
+          regex: '^(?!node:|\.\.{0,1}/).+'
+    metadata:
+      backpressure:
+        instead: "Use 'node:*' builtins or relative engine imports; harness code belongs in '.opencode/plugins/'."
+        appealable: true
+  - id: engine-no-harness-dynamic-import
+    languages: [typescript]
+    severity: ERROR
+    message: engine module dynamically imports a non-node dependency
+    paths:
+      include: ["engine/**"]
+      exclude: ["**/*.test.ts"]
+    patterns:
+      - pattern-either:
+          - pattern: 'import("$MOD")'
+          - pattern: 'require("$MOD")'
+      - metavariable-regex:
+          metavariable: $MOD
+          regex: '^(?!node:|\.\.{0,1}/).+'
+    metadata:
+      backpressure:
+        instead: "Use 'node:*' builtins or relative engine imports; harness code belongs in '.opencode/plugins/'."
+  - id: engine-no-bun-test-outside-tests
+    languages: [typescript]
+    severity: ERROR
+    message: bun:test imported outside a *.test.ts file
+    paths:
+      include: ["engine/**"]
+      exclude: ["**/*.test.ts"]
+    patterns:
+      - pattern: 'import "$MOD"'
+      - metavariable-regex:
+          metavariable: $MOD
+          regex: '^bun:test$'

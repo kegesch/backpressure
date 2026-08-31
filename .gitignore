@@ -1,0 +1,25 @@
+# user runtime data — never commit
+.backpressure/
+
+# internal iteration artifacts
+devlog.md
+engine-plan.md
+iter*-prompts/
+iter*-validation/
+.opencode/agents/
+
+# dependencies & lockfiles (consumers bring their own; .opencode/node_modules is opencode-managed)
+node_modules/
+.opencode/node_modules/
+.opencode/package.json
+.opencode/package-lock.json
+.opencode/bun.lock
+.opencode/.gitignore
+
+# local junk
+nul
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+Thumbs.db

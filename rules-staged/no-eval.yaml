@@ -1,0 +1,9 @@
+rules:
+  - id: no-eval
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: eval() is forbidden — dynamic code execution is unauditable
+    pattern: 'eval(...)'
+    metadata:
+      backpressure:
+        instead: "Replace eval with explicit logic, or JSON.parse for data."

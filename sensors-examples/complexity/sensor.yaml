@@ -1,0 +1,21 @@
+id: complexity
+description: "Tree-sitter cyclomatic complexity scan for TypeScript functions"
+command: ["python", "{sensorDir}/complexity_scan.py", "--config", "{sensorDir}/complexity-rules.yaml", "{root}"]
+triggers:
+  include: ["engine/**"]
+  exclude: ["**/*.test.ts"]
+  tools: [write]
+format:
+  type: json
+  findingsPath: "findings"
+  fields:
+    ruleId: ruleId
+    path: file
+    line: startLine
+    message: message
+    severity: severity
+severity:
+  map: { ERROR: ERROR, WARNING: WARNING, INFO: INFO }
+  default: INFO
+lifecycle:
+  status: draft
