@@ -5,12 +5,14 @@
  * enable all of backpressure with a single entry in their `opencode.json`
  * (e.g. `"plugin": [".opencode/plugins/index.ts"]`) instead of five.
  *
- *   denylist-probe   — hard gates (tool-path, shell-write) + semgrep/sensor
+ *   skill-probe       — register the `backpressure-extend` skill under
+ *                      `skills.paths`, resolved plugin-relative (no hooks)
+ *   denylist-probe    — hard gates (tool-path, shell-write) + semgrep/sensor
  *                      rules + advise collection
- *   commit-probe     — commit validators (tiers 0/1/2, appeal)
- *   reinject-probe   — deliver collected advisories on session idle
- *   idle-probe       — audit all session.* events to the hook log
- *   permission-probe — audit permission.ask + permission.* bus events
+ *   commit-probe      — commit validators (tiers 0/1/2, appeal)
+ *   reinject-probe    — deliver collected advisories on session idle
+ *   idle-probe        — audit all session.* events to the hook log
+ *   permission-probe  — audit permission.ask + permission.* bus events
  *
  * Hooks that multiple probes define (e.g. `event`, `tool.execute.before`) are
  * chained in declaration order. Chaining is sequential: if an earlier handler
@@ -18,6 +20,7 @@
  * preserving each probe's block semantics.
  */
 import type { Plugin, PluginInput, Hooks } from "@opencode-ai/plugin";
+import skillProbe from "./skill-probe.ts";
 import denylistProbe from "./denylist-probe.ts";
 import commitProbe from "./commit-probe.ts";
 import reinjectProbe from "./reinject-probe.ts";
@@ -25,6 +28,7 @@ import idleProbe from "./idle-probe.ts";
 import permissionProbe from "./permission-probe.ts";
 
 const PROBES = [
+  skillProbe,
   denylistProbe,
   commitProbe,
   reinjectProbe,
@@ -60,7 +64,8 @@ function mergeHooks(hooks: Hooks[]): Hooks {
 }
 
 const backpressure: Plugin = async (input: PluginInput) => {
-  // Run every probe factory against the same plugin input.
+  // Run every probe factory against the same plugin input. skill-probe
+  // performs its config work at load time; the others register hooks.
   const hooks = await Promise.all(PROBES.map((probe) => probe(input)));
   return mergeHooks(hooks);
 };

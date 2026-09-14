@@ -17,9 +17,13 @@ Do not add a new extension point without documenting it there. Keep the skill
 accurate, current, and aligned with the actual behavior in `engine/` and the
 `.opencode/plugins/`.
 
-The skill is installed alongside the plugin (it ships inside `.opencode/`), so
-it is what future agents — and consumers of this repo — rely on to extend
-backpressure. An out-of-date skill is worse than none.
+The skill is installed alongside the plugin (it ships inside `.opencode/` and is
+injected to agents via `skills.paths` in `opencode.json`; the plugin auto-ensures
+that path, resolved from its own `import.meta.url`, so it stays plugin-relative),
+so it is what future agents — and consumers of this repo — rely on to extend
+backpressure. An
+out-of-date skill is worse than none. Keep `opencode.json` (`plugin` + `skills`)
+in sync with the actual plugin/skill files.
 
 ## Project conventions
 

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    ".opencode/plugins/index.ts"
+  ],
+  "skills": {
+    "paths": [
+      ".opencode/skills",
+      "/home/jonas/projects/backpressure/.opencode/skills"
+    ]
+  }
+}

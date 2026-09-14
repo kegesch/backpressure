@@ -54,20 +54,31 @@ Prerequisites: [opencode](https://opencode.ai). Optionally
    `@opencode-ai/plugin` in `devDependencies` is included for editor
    type-checking and the `test` script — `bun install` is optional.
 
-   Enable backpressure with a **single plugin entry** in `opencode.json`
-   (recommended — it composes all probes):
+   Enable backpressure by copying the repo's `opencode.json` (recommended — it
+   activates the plugin; the skill is injected automatically):
 
    ```jsonc
    // opencode.json
    {
-     "plugin": [".opencode/plugins/index.ts"]
+     "$schema": "https://opencode.ai/config.json",
+     "plugin": [".opencode/plugins/index.ts"],
+     "skills": { "paths": [".opencode/skills"] }
    }
    ```
 
    `.opencode/plugins/index.ts` runs every probe (gates, commit validators,
    advise delivery, idle audit, permission audit) in one plugin, chaining
-   shared hooks in order. Alternatively list the individual probes under
-   `plugin` (see `.opencode/plugins/`).
+   shared hooks in order.
+
+   The plugin also **auto-injects the skill**: on load it resolves its own
+   location via `import.meta.url` and ensures the plugin-relative
+   `../skills` folder is registered under `skills.paths` in the project's
+   `opencode.json` (adding it if absent). Because the path is resolved from
+   the plugin itself — not the project root — it works regardless of where the
+   plugin or project live. The static `skills.paths: [".opencode/skills"]`
+   entry is a documented baseline; the plugin keeps it correct for any layout.
+   Alternatively list the individual probes under `plugin` (see
+   `.opencode/plugins/`).
 
 2. Create your state directories (user-owned; the engine only appends to
    its hook log there):
