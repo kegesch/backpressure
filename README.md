@@ -24,6 +24,9 @@ are plain declarative YAML owned by the repository.
 - **User-defined sensors** — run any external tool/linter as data
   (`json` / `regex` / `preset:eslint-json` formats, exit-code and severity
   mapping). See [SENSORS.md](SENSORS.md).
+- **Commit validators** — validate staged commits before they land. Rules
+  run in tiers: tier 0 is deterministic JS (free, reliable), tiers 1/2 are
+  LLM-judged in batches and return ACK/NACK, with an optional appeal path.
 - **Zero mandatory external dependencies** — without semgrep/python the
   engine still enforces the path and shell gates; every optional tool fails
   open when absent.
@@ -37,13 +40,34 @@ Prerequisites: [opencode](https://opencode.ai). Optionally
 
    ```powershell
    Copy-Item -Recurse <this-repo>\.opencode\plugins <your-repo>\.opencode\
+   Copy-Item -Recurse <this-repo>\.opencode\skills <your-repo>\.opencode\
    Copy-Item -Recurse <this-repo>\engine <your-repo>\
    ```
+
+   The `skills` copy is optional but recommended: `.opencode/skills/
+   backpressure-extend/` installs a `backpressure-extend` agent skill alongside
+   the plugin that explains when to add a rule, sensor, or validator and how to
+   write each.
 
    The plugins import `@opencode-ai/plugin` **for types only**, so nothing
    needs to be installed for them to load. A minimal `package.json` with
    `@opencode-ai/plugin` in `devDependencies` is included for editor
    type-checking and the `test` script — `bun install` is optional.
+
+   Enable backpressure with a **single plugin entry** in `opencode.json`
+   (recommended — it composes all probes):
+
+   ```jsonc
+   // opencode.json
+   {
+     "plugin": [".opencode/plugins/index.ts"]
+   }
+   ```
+
+   `.opencode/plugins/index.ts` runs every probe (gates, commit validators,
+   advise delivery, idle audit, permission audit) in one plugin, chaining
+   shared hooks in order. Alternatively list the individual probes under
+   `plugin` (see `.opencode/plugins/`).
 
 2. Create your state directories (user-owned; the engine only appends to
    its hook log there):
@@ -102,20 +126,86 @@ fail-open contract. Full schema, placeholders, and examples:
 [SENSORS.md](SENSORS.md). A migrated real-world example lives in
 [`sensors-examples/complexity/`](sensors-examples/complexity/).
 
+## Commit validators
+
+The `commit-probe` plugin intercepts every `bash` tool call that looks like a
+`git commit` and validates the staged change against your markdown rule files
+before it is allowed to run.
+
+**Auto-init on load** — the plugin needs no commands. When opencode loads it,
+it creates `.backpressure/` plus `.backpressure/validators/` and writes a
+default `.backpressure/commit-validators.json` state file if absent. There are
+no slash commands.
+
+**Activation** — copy rule files from `validators-staged/` into
+`.backpressure/validators/` and restart opencode. Each validator is a markdown
+file whose frontmatter drives behavior:
+
+```yaml
+---
+name: dead-code
+description: Detects unused code that should be removed
+enabled: true
+tier: 2
+---
+```
+
+- `name` — stable id used in results, overrides, and appeals.
+- `description` — human summary (logged on load).
+- `enabled` — `false` disables; default true.
+- `tier` — `0` = deterministic JS checker (no LLM, no tokens), `1` = small
+  model, `2` = capable model. Absent/invalid tiers default to `2`. Tier-0
+  names must match one of the built-in checkers (e.g. `no-dangerous-git`,
+  `hygiene`, `coverage-rules`, `type-organization`,
+  `testing-weak-assertions`, `infra-commit-format`,
+  `commit-message-no-speculation`, `ketchup-plan-format`).
+
+The `appeal-system` validator (tier 2) is filtered out of the main run and
+used only to judge `[appeal: …]` requests.
+
+**State knobs** (`.backpressure/commit-validators.json`):
+
+- `validateCommit.mode` — `strict` (block on NACK), `warn` (log the violation,
+  let the commit through), or `off` (skip validation).
+- `validateCommit.batchCount` — validators per batched LLM call (default 3).
+- `models.tier1` / `models.tier2` — optional `{ providerID, modelID }` refs
+  used when prompting the batched tier-1/2 runs.
+
+**Appeal** — add `[appeal: your justification]` to the commit message. If every
+NACK is appealable, the `appeal-system` validator judges it; an ACK lets the
+commit through, a NACK appends the denial to the block message.
+
+**Environment variables:**
+
+- `BACKPRESSURE_VALIDATORS_DIR` — override where validator markdown is loaded
+  from (default `.backpressure/validators/`).
+- `BACKPRESSURE_COMMIT_LLM_TIMEOUT_MS` — per-validator LLM timeout (default
+  90000).
+
+**Fail-open contract** — if no LLM executor is available, tier-1/2 validators
+are skipped (only tier-0 runs); if every tier-1/2 batch crashes, the commit is
+allowed; any unexpected error logs `probe.commit.error` and lets the commit
+through. Only a deliberate NACK (or an appeal denial) blocks the tool call.
+
 ## Development
 
 ```powershell
 bun install   # optional: editor type-checking only
-bun test engine/   # 218 unit tests
+bun test engine/   # 282 unit tests
 ```
 
 ## Repository layout
 
-- `.opencode/plugins/` — the four opencode project plugins (gates, advise
-  delivery, idle re-scan)
+- `.opencode/plugins/` — the opencode project plugins (`index.ts` composes
+  all of them for a single `opencode.json` entry; gates, advise delivery,
+  idle re-scan, commit validation)
+- `.opencode/skills/backpressure-extend/` — agent skill for deciding and
+  writing rules, sensors, and validators (installs with the plugin)
 - `engine/` — harness-agnostic evaluation core (rules, semgrep, sensors,
-  advisories) with its test suite
+  advisories, commit validators, tier-0 checkers) with its test suite
 - `rules-staged/` — example semgrep rules to copy into `.backpressure/rules/`
+- `validators-staged/` — example commit validators to copy into
+  `.backpressure/validators/`
 - `sensors-examples/complexity/` — example sensor (tree-sitter complexity
   scan)
 - [`SENSORS.md`](SENSORS.md) — sensor schema, formats, fail-open contract
